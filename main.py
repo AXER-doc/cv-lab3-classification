@@ -22,15 +22,15 @@ path = kagglehub.dataset_download("abhinavnayak/catsvdogs-transformed")
 print("Path to dataset files:", path)
 
 # Group files into train/cat, train/dog, val/cat, val/dog
-# exactly 200 cats and 200 dogs should be in test dataset
+# exactly 200 cats and 200 dogs should be in val dataset
 
 from os import listdir, makedirs, rename
 from random import randint
 
 cats_left = 1000
-cats_test = 200
+cats_val = 200
 dogs_left = 1000
-dogs_test = 200
+dogs_val = 200
 
 for dirname in ("train", "val", "train/cat", "train/dog", "val/cat", "val/dog"):
     makedirs(dirname, exist_ok=True)
@@ -38,16 +38,16 @@ for dirname in ("train", "val", "train/cat", "train/dog", "val/cat", "val/dog"):
 for img in listdir(path+"/train_transformed/"):
     filepath = path+"/train_transformed/"+img
     if img[:3] == "cat":
-        if randint(1, cats_left) <= cats_test:
+        if randint(1, cats_left) <= cats_val:
             rename(filepath, "val/cat/"+img)
-            cats_test -= 1
+            cats_val -= 1
         else:
             rename(filepath, "train/cat/"+img)
         cats_left -= 1
     elif img[:3] == "dog":
-        if randint(1, dogs_left) <= dogs_test:
+        if randint(1, dogs_left) <= dogs_val:
             rename(filepath, "val/dog/"+img)
-            dogs_test -= 1
+            dogs_val -= 1
         else:
             rename(filepath, "train/dog/"+img)
         dogs_left -= 1
