@@ -14,6 +14,44 @@ transform_train = transforms.Compose([
 ])
 transform_val = transforms.Compose([transforms.Resize((224, 224)), transforms.ToTensor(), transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
 
+import kagglehub
+
+# Download latest version
+path = kagglehub.dataset_download("abhinavnayak/catsvdogs-transformed")
+
+print("Path to dataset files:", path)
+
+# Group files into train/cat, train/dog, val/cat, val/dog
+# exactly 200 cats and 200 dogs should be in test dataset
+
+from os import listdir, makedirs, rename
+from random import randint
+
+cats_left = 1000
+cats_test = 200
+dogs_left = 1000
+dogs_test = 200
+
+for dirname in ("train", "val", "train/cat", "train/dog", "val/cat", "val/dog"):
+    makedirs(dirname, exist_ok=True)
+
+for img in listdir(path+"/train_transformed/"):
+    filepath = path+"/train_transformed/"+img
+    if img[:3] == "cat":
+        if randint(1, cats_left) <= cats_test:
+            rename(filepath, "val/cat/"+img)
+            cats_test -= 1
+        else:
+            rename(filepath, "train/cat/"+img)
+        cats_left -= 1
+    elif img[:3] == "dog":
+        if randint(1, dogs_left) <= dogs_test:
+            rename(filepath, "val/dog/"+img)
+            dogs_test -= 1
+        else:
+            rename(filepath, "train/dog/"+img)
+        dogs_left -= 1
+
 # Загрузка данных (замените пути)
 train_ds = datasets.ImageFolder('train/', transform=transform_train)
 val_ds = datasets.ImageFolder('val/', transform=transform_val)
@@ -39,7 +77,11 @@ class SimpleCNN(nn.Module):
         x = self.dropout(x)
         return self.fc2(x)
 
-model = SimpleCNN().cuda()  # Или resnet18(pretrained=True), замените fc
+nocuda = not torch.cuda.is_available()
+if nocuda:
+    print("No CUDA available")
+
+model = SimpleCNN() if nocuda else SimpleCNN().cuda()  # Или resnet18(pretrained=True), замените fc
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.Adam(model.parameters(), lr=0.001)
 
@@ -48,7 +90,8 @@ for epoch in range(10):
     model.train()
     train_loss = 0
     for imgs, labels in train_loader:
-        imgs, labels = imgs.cuda(), labels.cuda()
+        if not nocuda:
+            imgs, labels = imgs.cuda(), labels.cuda()
         optimizer.zero_grad()
         out = model(imgs)
         loss = criterion(out, labels)
@@ -61,7 +104,8 @@ for epoch in range(10):
     correct, total = 0, 0
     with torch.no_grad():
         for imgs, labels in val_loader:
-            imgs, labels = imgs.cuda(), labels.cuda()
+            if not nocuda:
+                imgs, labels = imgs.cuda(), labels.cuda()
             out = model(imgs)
             _, pred = torch.max(out, 1)
             total += labels.size(0)
